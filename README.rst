@@ -1,8 +1,11 @@
 OrangeApi
 =============
-OrangeApi 是一个轻量web框架, 并且附带了web服务, 无需任何额外的包就可以运行.OrangeApi不是WSGI框架,
-整个框架基于asyncio,在不选择uvloop作为事件循环的时候windows和linux均可运行.
+OrangeApi 是一个轻量web框架, 并且附带了web服务, 无需任何额外的库就可以运行.OrangeApi不是WSGI框架,
+整个框架基于asyncio,在不选择uvloop作为事件循环的时候windows和linux均可运行.原生支持websocket.
 
+写这个框架时有一个想法,就是除了python内建库不在使用其他库,自己就可以独立运行
+
+python要求3.6以上
 
 最小例子:
 

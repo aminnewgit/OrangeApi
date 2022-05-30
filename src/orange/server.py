@@ -71,7 +71,7 @@ class HttpProtocol(asyncio.Protocol):
   def connection_lost(self,exc):
     # print(f'{id(self.transport)} lost',exc)
     if self.web_socket_client is not None:
-      self.web_socket_client.close()
+      self.web_socket_client.clean()
 
   # request 接收生命周期
   def on_request(self,req:Request):
@@ -140,7 +140,7 @@ async def run_server(app,port,host):
 
   def create_protocol():
     return HttpProtocol(app)
-  server = await loop.create_server(create_protocol,host,port)
+  await loop.create_server(create_protocol,host,port)
   print(f"server start http://{host}:{port}")
   print(f"server start http://localhost:{port}")
   while True:
@@ -148,5 +148,11 @@ async def run_server(app,port,host):
 
 
 def start(app,port,host):
+  try:
+    asyncio.run(run_server(app,port,host))
+  except KeyboardInterrupt:
+    # 在本例中，只有Ctrl-C会终止loop，然后像前例中进行善后工作
+    # print('<Got signal: SIGINT, shutting down.>')
+    print("shutting down")
+
   # uvloop.install()
-  asyncio.run(run_server(app,port,host))

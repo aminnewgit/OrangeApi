@@ -81,7 +81,7 @@ class Request(object):
       try:
         if self.body_lock is False:
           await self.body_over_event.wait()
-        j = json.dumps(self.body)
+        j = json.loads(self.body.decode("utf-8"))
         self.json = j
         return j
       except Exception as e:
@@ -116,6 +116,7 @@ class Request(object):
       await async_close(self.loop,f)
       print('写入完成')
 
+
 class RequestParser:
   def __init__(self,protocol):
     self.protocol = protocol
@@ -139,7 +140,7 @@ class RequestParser:
     # /r/n body
     r = r[0].decode('utf-8').split('\r\n', 1)
     rl = r[0].split()  # request line
-    if len(rl) is not 3: raise AssertionError('bad request line')
+    if len(rl) != 3: raise AssertionError('bad request line')
     elif rl[2] != 'HTTP/1.1': raise AssertionError('not http 1.1')
     method = rl[0].upper()
     url = rl[1]
@@ -153,7 +154,7 @@ class RequestParser:
     query_str = None
     if ul > 2:
       raise AssertionError('query str too much ?')
-    elif ul is 2:
+    elif ul == 2:
       query_str = url_s[1]
 
     #解析 header
@@ -161,10 +162,10 @@ class RequestParser:
     lines = r[1].split('\r\n')
     for i in lines:
       hd = i.split(': ')
-      assert len(hd) is 2, 'header format err'
-      headers[hd[0]] = hd[1]
+      assert len(hd) == 2, 'header format err'
+      headers[hd[0].lower()] = hd[1]
 
-    body_length = int(headers.get('Content-Length',0))
+    body_length = int(headers.get('content-length',0))
     req = Request(method,path,query_str,
                   url,headers,body_length,body,
                   self.protocol.loop)

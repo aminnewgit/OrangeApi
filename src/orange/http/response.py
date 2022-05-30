@@ -1,10 +1,20 @@
+import asyncio
 import os,json
-from .error import get_error_response
-from .import get_expires_gmt_time
+
+from email.utils import formatdate
+
+def get_gmt_time():
+  formatdate(None, usegmt=True)
+
+# timeout 单位是秒
+def get_expires_gmt_time(timeout):
+  formatdate(None, usegmt=True)
 
 
-expires = 60*60*24
-max_age = f'max-age={expires}'
+def get_max_age(expires:int):
+  # expires 单位秒
+  return f'max-age={expires}'
+
 mime_type = {
   'html': 'text/html; charset=UTF-8',
   'css': 'text/css',
@@ -17,26 +27,53 @@ mime_type = {
   'png': 'image/png',
 }
 
+http_status = {
+  101: "Switching Protocols",
+  200: "OK",
+  400: "Bad Request",
+  401: "Unauthorized",
+  413: "Request Entity Too Large",
+  404: "Not Found",
+  405: "Method Not Allowed",
+  500: "Internal Server Error",
+}
 
-def build_header(header_dict):
-  h = 'HTTP/1.1 200 OK\r\n'
-  for k, v in header_dict.items():
-    h += f'{k}: {v}\r\n'
-  header =  h.encode('utf-8') + b'\r\n'
-  return header
+class Response:
+  def __init__(self,body: bytes, headers=None, status_code = 200):
+    if headers is None: headers = []
+    self.status_code = status_code
+    self.headers = headers
+    self.body = body
 
-def json_resp(py_obj):
-  body = json.dumps(py_obj, ensure_ascii=False)  # indent=2 缩进
+  def build(self):
+    resp = f'HTTP/1.1 {self.status_code} {http_status.get(self.status_code)}\r\n'
+    if self.body is not None:
+      self.headers.append(('Content-Length',len(self.body)))
+    for k, v in self.headers:
+      resp += f'{k}: {v}\r\n'
+    resp = resp.encode('utf-8') + b'\r\n'
+    if self.body is not None:
+       resp = resp + self.body
+    return resp
+
+
+def get_error_response(code):
+  status_str = http_status.get(code)
+  if status_str is None:
+    status_str = f"http status code {code} not support"
+    code = 500
+  return Response(status_str.encode('utf-8'),None,code)
+
+
+def json_resp(data):
+  body = json.dumps(data, ensure_ascii=False, separators=(',', ':'))  # indent=2 缩进
   body = body.encode('utf-8')
-  header_dict = {
-    'Content-Type': "application/json",
-    'Content-Length': len(body)
-  }
+  headers = [
+    ('Content-Type',"application/json"),
+  ]
+  return Response(body,headers)
 
-  response = build_header(header_dict) + body
-  return response
-
-def send_file(file_path):
+def get_file_resp(file_path,max_age):
   # 检查文件是否存在
   if os.path.exists(file_path):
     # 获取扩展名
@@ -44,34 +81,20 @@ def send_file(file_path):
     # 二进制方式读取
     with open(file_path, 'rb') as f:
       body = f.read()
-      header_dict = {
-        'Content-Type': mime_type.get(suffix, 'application/octet-stream'),
-        'Content-Length': len(body),
-        'Cache-Control': max_age,
+      headers = [
+        ('Content-Type', mime_type.get(suffix, 'application/octet-stream')),
         # 'Expires':get_expires_gmt_time(expires)
-      }
-      header = build_header(header_dict)
-      return header + body
+      ]
+      if max_age is None:
+        headers.append(('Cache-Control', 'no-cache'))
+      else:
+        headers.append(('Cache-Control', get_max_age(max_age)))
+      return Response(body,headers)
+  else:
+    return get_error_response(404)
+
+def get_file_resp_async(file_path,max_age):
+  loop = asyncio.get_running_loop()
+  return loop.run_in_executor(None,get_file_resp,file_path,max_age)
 
 
-http_status = {
-  101: "Switching Protocols",
-  200: "OK",
-  400: "Bad Request",
-  401: "Unauthorized",
-  404: "Not Found",
-  405: "Method Not Allowed",
-  500: "Internal Server Error",
-}
-
-class Response:
-  def __init__(self):
-    self.status_code = 200
-    self.headers = None
-
-  def build(self):
-    resp = f'HTTP/1.1 {self.status_code} {http_status.get(self.status_code)}\r\n'
-    if self.headers is not None:
-      for k, v in self.headers:
-        resp += f'{k}: {v}\r\n'
-    return resp.encode('utf-8') + b'\r\n'

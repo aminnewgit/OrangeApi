@@ -1,9 +1,10 @@
+import asyncio
 import base64
 import hashlib
 import json
 import struct
 
-from .http.response import Response
+from .http.response import Response, get_error_response
 
 SUPPORTED_VERSIONS = ('13', '8', '7')
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -138,7 +139,8 @@ def encode_ws_frame(opcode, payload: bytes):
   frame = bytearray()
 
   # fin 1 rsv1~3 1  1111 0000 0xF0
-  first_byte = opcode | 0xF0
+  # fin 1 rsv1~3 0  1000 0000 0xF0
+  first_byte = opcode | 0x80
 
   # now deal with length complexities
   if length < 126:
@@ -171,10 +173,11 @@ class WebSocketClient:
     self.transport = None
     self.Data = None
     self.id = None
+    self.is_close = False
 
   def exec_on_message(self,msg,opcode):
     if self.on_message is not None:
-      self.on_message(msg,opcode)
+      self.on_message(msg,self)
     else:
       print(opcode_to_type.get(opcode),msg)
 
@@ -194,9 +197,10 @@ class WebSocketClient:
   def close(self):
     self.transport.close()
 
+
   def clean(self):
     if self.on_close is not None:
-      self.on_close()
+      self.on_close(self)
 
   def _send(self, opcode, data):
     frame = encode_ws_frame(opcode,data)
@@ -204,54 +208,97 @@ class WebSocketClient:
 
   def send_json(self,data):
     data = json.dumps(data, ensure_ascii=False)
-    self._send(0x01,data)
+    self._send(0x01,data.encode('utf-8'))
 
   def send_text(self,text):
-    self._send(0x01,text)
+    self._send(0x01,text.encode('utf-8'))
+
+  def send_text_from_bytes(self, text: bytes):
+    self._send(0x01, text)
 
   def send_bytes(self,data):
     self._send(0x02,data)
 
   def can_upgrade(self, req):
-    resp = Response()
+
     headers = req.headers
     # Can only upgrade connection if using GET method.
-    if req.method != 'GET':
-      resp.status_code = 405
-    elif headers.get('Connection') != "Upgrade":
-      resp.status_code = 400
-    elif headers.get("Upgrade") != "websocket":
-      resp.status_code = 400
-    elif headers.get("Sec-WebSocket-Version") not in SUPPORTED_VERSIONS:
-      resp.status_code = 400
+    status_code = 101
+    if req.method != 'GET': status_code = 405
+    elif headers.get('connection') != "Upgrade": status_code = 400
+    elif headers.get("upgrade") != "websocket": status_code = 400
+    elif headers.get("sec-websocket-version") not in SUPPORTED_VERSIONS: status_code = 400
     else:
-      key = headers.get("Sec-WebSocket-Key")
+      key = headers.get("sec-websocket-key")
       if key is None:
-        resp.status_code = 400
-        return resp
+        return get_error_response(400)
 
       key = key.strip()
       try:
         key_len = len(base64.b64decode(key))
       except TypeError:
         # "Invalid key:
-        resp.status_code = 400
-        return resp
+        return get_error_response(400)
 
       if key_len != 16:
-        resp.status_code = 400
-        return resp
+        return get_error_response(400)
 
       # Sec-WebSocket-Extensions:
 
       accept = base64.b64encode(hashlib.sha1((key + GUID).encode("latin-1")).digest()).decode("latin-1")
 
-      resp.headers =  [
+      headers =  [
         ("Upgrade", "websocket"),
         ("Connection", "Upgrade"),
         ("Sec-WebSocket-Accept", accept)
       ]
-      resp.status_code = 101
       self.transport = req.transport
-      return resp
+      return Response(None,headers,status_code)
+    return get_error_response(status_code)
 
+class WsClientChannelBase:
+
+  def __init__(self):
+    self.client_list = []
+    self.client_dict = {}
+    self.loop = None
+
+  def broadcast(self,data):
+    if self.loop is None:
+      self.loop = asyncio.get_running_loop()
+    self.loop.create_task(self.__broadcast_task(data))
+
+  async def __broadcast_task(self, data):
+    # print('broadcast',data)
+    data = json.dumps(data, ensure_ascii=False, separators=(',', ':'))  # indent=2 缩进
+    data = data.encode("utf-8")
+    for client in self.client_list:
+      # if user.id != client.id :
+      ws: WebSocketClient = client.ws_client
+      ws.send_text_from_bytes(data)
+
+  def accept_client(self,req):
+    ws_client: WebSocketClient
+    resp, ws_client = req.upgrade_websocket()
+
+    if ws_client is not None:
+
+      def on_message(msg,_ws_client):
+        self.on_message(msg,_ws_client)
+
+      def on_close(_ws_client):
+        self.on_close(_ws_client)
+
+      ws_client.on_message = on_message
+      ws_client.on_close = on_close
+      self.client_login(ws_client)
+    return resp
+
+  def client_login(self, ws_client):
+    pass
+
+  def on_message(self, msg, ws_client):
+    pass
+
+  def on_close(self,ws_client):
+    pass

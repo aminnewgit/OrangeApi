@@ -5,3 +5,4 @@ from .http.response import json_resp,get_file_resp,get_file_resp_async
 from .http.request import Request
 from .http.proxy import request,get_request
 from .http.error import CloseTransport
+from .utils.json import json_dumps

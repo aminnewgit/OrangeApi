@@ -9,4 +9,4 @@ def line_to_hump(string):
       upper = True
     else:
       new_str += char
-  return string,new_str
+  return new_str

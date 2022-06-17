@@ -2,7 +2,7 @@ import asyncio
 import traceback
 
 from .router.base_endpoint import Endpoint
-from .server import start
+
 from .http.error import CloseTransport
 from .http.response import get_error_response
 from .http.request import Request
@@ -10,6 +10,8 @@ from .log import log_error
 
 
 #最大 body 的长度 一般情况是2M 如果超过6m的body 需要在路由函数设置
+from .server import run_server
+
 default_max_body_length = 1024*1024*6  #6m
 
 
@@ -22,15 +24,39 @@ class Orange(object):
     self.backlog = 1000
     self.timeout = 20
     self.exception_handler = None
+    self.auto_configuration_func_list = []
+    self.auto_close_func_list = []
 
   def run_server(self,port=5000,host='0.0.0.0'):
-    start(self, port, host)
+    try:
+      asyncio.run(self.__start(port,host))
+    except KeyboardInterrupt:
+      # 在本例中，只有Ctrl-C会终止loop，然后像前例中进行善后工作
+      # print('<Got signal: SIGINT, shutting down.>')
+      for (ac_func,is_async) in self.auto_close_func_list:
+        if ac_func is not None: ac_func()
+      print("shutting down")
+
+  async def __start(self,port,host):
+    # todo 通用配置类 环境配置
+    for (ac_func, is_async) in self.auto_configuration_func_list:
+      auto_close_func = None
+      if is_async:
+        auto_close_func = await ac_func()
+      else:
+        auto_close_func = ac_func()
+      self.auto_close_func_list.append(auto_close_func)
+
+    await run_server(self, port, host)
 
   def add_router(self,router):
     self.router_list.append(router)
 
   def add_exception_handler(self, handler):
      self.exception_handler = handler
+
+  def add_init_func_before_server_start(self,func,is_async=True):
+    self.auto_configuration_func_list.append((func,is_async))
 
   async def __call__(self, req:Request):
     # code = 200

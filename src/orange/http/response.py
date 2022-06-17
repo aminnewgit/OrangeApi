@@ -1,7 +1,17 @@
 import asyncio
-import os,json
+import os
 
 from email.utils import formatdate
+from ..utils.json import json_dumps
+
+
+def json_resp(data):
+  body = json_dumps(data)  # indent=2 缩进
+  body = body.encode('utf-8')
+  headers = [
+    ('Content-Type',"application/json"),
+  ]
+  return Response(body,headers)
 
 def get_gmt_time():
   formatdate(None, usegmt=True)
@@ -9,7 +19,6 @@ def get_gmt_time():
 # timeout 单位是秒
 def get_expires_gmt_time(timeout):
   formatdate(None, usegmt=True)
-
 
 def get_max_age(expires:int):
   # expires 单位秒
@@ -56,22 +65,12 @@ class Response:
        resp = resp + self.body
     return resp
 
-
 def get_error_response(code):
   status_str = http_status.get(code)
   if status_str is None:
     status_str = f"http status code {code} not support"
     code = 500
   return Response(status_str.encode('utf-8'),None,code)
-
-
-def json_resp(data):
-  body = json.dumps(data, ensure_ascii=False, separators=(',', ':'))  # indent=2 缩进
-  body = body.encode('utf-8')
-  headers = [
-    ('Content-Type',"application/json"),
-  ]
-  return Response(body,headers)
 
 def get_file_resp(file_path,max_age):
   # 检查文件是否存在

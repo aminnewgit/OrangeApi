@@ -134,7 +134,6 @@ class HttpProtocol(asyncio.Protocol):
     server_state.task_set.discard(task)
 
 
-
 async def run_server(app,port,host):
   loop = asyncio.get_running_loop()
 
@@ -147,12 +146,4 @@ async def run_server(app,port,host):
     await asyncio.sleep(1)
 
 
-def start(app,port,host):
-  try:
-    asyncio.run(run_server(app,port,host))
-  except KeyboardInterrupt:
-    # 在本例中，只有Ctrl-C会终止loop，然后像前例中进行善后工作
-    # print('<Got signal: SIGINT, shutting down.>')
-    print("shutting down")
 
-  # uvloop.install()

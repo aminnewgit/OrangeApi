@@ -1,8 +1,8 @@
 import asyncio
 # import traceback
-from .http.request import RequestParser,Request
 # import uvloop
-from .http.response import Response
+
+from .http.request import RequestParser,Request
 from .websocket import WebSocketClient
 
 

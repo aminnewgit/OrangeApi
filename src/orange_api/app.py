@@ -24,10 +24,10 @@ class Orange(object):
     self.backlog = 1000
     self.timeout = 20
     self.exception_handler = None
-    self.auto_configuration_func_list = []
+    self.init_func_list = []
     self.auto_close_func_list = []
 
-  def run_server(self,port=5000,host='0.0.0.0'):
+  def start(self,port=5000,host='0.0.0.0'):
     try:
       asyncio.run(self.__start(port,host))
     except KeyboardInterrupt:
@@ -39,7 +39,7 @@ class Orange(object):
 
   async def __start(self,port,host):
     # todo 通用配置类 环境配置
-    for (ac_func, is_async) in self.auto_configuration_func_list:
+    for (ac_func, is_async) in self.init_func_list:
       auto_close_func = None
       if is_async:
         auto_close_func = await ac_func()
@@ -50,13 +50,19 @@ class Orange(object):
     await run_server(self, port, host)
 
   def add_router(self,router):
+    """添加路由模块,优先级按添加顺序执行"""
     self.router_list.append(router)
 
   def add_exception_handler(self, handler):
      self.exception_handler = handler
 
-  def add_init_func_before_server_start(self,func,is_async=True):
-    self.auto_configuration_func_list.append((func,is_async))
+  def add_init_func(self,func,is_async=True):
+    """
+    添加初始化函数, 这些函数按添加顺序, 在http服务启动前运行
+    如果需要在程序结束后执行释放操作, 初始化函数可以返回一个
+    函数用于释放操作, 这个函数不能是 async 函数
+    """
+    self.init_func_list.append((func,is_async))
 
   async def __call__(self, req:Request):
     # code = 200

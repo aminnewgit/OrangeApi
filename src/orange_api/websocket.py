@@ -4,6 +4,7 @@ import hashlib
 import json
 import struct
 
+from orange_kit import json_dumps
 from .http.response import Response, get_error_response
 
 SUPPORTED_VERSIONS = ('13', '8', '7')
@@ -261,16 +262,16 @@ class WsClientChannelBase:
   def __init__(self):
     self.client_list = []
     self.client_dict = {}
-    self.loop = None
+
 
   def broadcast(self,data):
-    if self.loop is None:
-      self.loop = asyncio.get_running_loop()
-    self.loop.create_task(self.__broadcast_task(data))
+    loop = asyncio.get_running_loop()
+    # loop.run_in_executor(None, self.__broadcast_task, data)
+    loop.create_task(self.__broadcast_task(data))
 
   async def __broadcast_task(self, data):
     # print('broadcast',data)
-    data = json.dumps(data, ensure_ascii=False, separators=(',', ':'))  # indent=2 缩进
+    data = json_dumps(data)
     data = data.encode("utf-8")
     for client in self.client_list:
       # if user.id != client.id :

@@ -43,7 +43,7 @@ class Request(object):
   def send(self,data):
     self.transport.write(data)
 
-  def parse_cookie(self):
+  def parse_cookie(self)->dict:
     ck = self.headers.get('Cookie')
     cookie = {}
     if ck is not None:
@@ -54,7 +54,7 @@ class Request(object):
     self.cookie = cookie
     return cookie
 
-  def parse_query(self):
+  def parse_query(self)->dict:
     query = {}
     if self.query_str is None: return query
     args = self.query_str.split('&')

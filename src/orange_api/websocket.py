@@ -30,7 +30,7 @@ opcode_dict = {
 }
 
 opcode_to_type = {
-  0x01:'test',
+  0x01:'text',
   0x02:'binary',
   0x08:'close',
   0x09:'ping',
@@ -168,19 +168,22 @@ def encode_ws_frame(opcode, payload: bytes):
   return frame
 
 class WebSocketClient:
+
+  __slots__ = ("on_message","on_close","transport","id","is_close")
+
   def __init__(self):
-    self.on_message = None
     self.on_close = None
     self.transport = None
-    self.Data = None
     self.id = None
     self.is_close = False
 
+    def on_message(msg,opcode,client):
+      # print(opcode_to_type.get(opcode), msg)
+      pass
+    self.on_message = on_message
+
   def exec_on_message(self,msg,opcode):
-    if self.on_message is not None:
-      self.on_message(msg,self)
-    else:
-      print(opcode_to_type.get(opcode),msg)
+      self.on_message(msg,opcode,self)
 
   def feed_data(self, data: bytes):
     # 0x01:'text', 0x02:'binary', 0x08:'close',0x09:'ping',0x0a:'pong',
@@ -197,7 +200,6 @@ class WebSocketClient:
 
   def close(self):
     self.transport.close()
-
 
   def clean(self):
     if self.on_close is not None:
@@ -263,7 +265,6 @@ class WsClientChannelBase:
     self.client_list = []
     self.client_dict = {}
 
-
   def broadcast(self,data):
     loop = asyncio.get_running_loop()
     # loop.run_in_executor(None, self.__broadcast_task, data)
@@ -283,22 +284,11 @@ class WsClientChannelBase:
     resp, ws_client = req.upgrade_websocket()
 
     if ws_client is not None:
-
-      def on_message(msg,_ws_client):
-        self.on_message(msg,_ws_client)
-
-      def on_close(_ws_client):
-        self.on_close(_ws_client)
-
-      ws_client.on_message = on_message
-      ws_client.on_close = on_close
+      ws_client.on_close = self.on_close
       self.client_login(ws_client)
     return resp
 
   def client_login(self, ws_client):
-    pass
-
-  def on_message(self, msg, ws_client):
     pass
 
   def on_close(self,ws_client):

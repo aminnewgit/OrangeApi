@@ -1,27 +1,40 @@
-from typing import Callable
-
-from .base_endpoint import Endpoint
-from .base_router import Router
-from ..http.response import get_file_resp_async, get_max_age
+from .base import BaseEndpoint
+from ..http.response import get_file_resp_async
 
 
-class StaticEndpoint(Endpoint):
+class StaticEndpoint:
+  __slots__ = ("execute_func",)
+
   def __init__(self, file_path, max_age):
     async def send_file():
       return await get_file_resp_async(file_path,max_age)
-    super().__init__(send_file, is_async=True)
+    self.execute_func = send_file
 
 # todo 不带/  自动去除/
-class StaticRouter(Router):
+class StaticRouter:
+
+  __slots__ = ("url_map","routes",'file_root_path','uri_prefix','max_age')
+
   def __init__(self, file_root_path:str, uri_prefix:str, max_age:int=None, url_map:dict=None,):
-    self.url_map = url_map
+    self.url_map = url_map                # 一个 url -> file map 用于指定特殊路径对应特殊文件
     self.routes = {}
+
+    # 文件根路径必须 / 为结尾
+    if file_root_path.endswith('/') is False:
+      file_root_path += '/'
     self.file_root_path = file_root_path
+
+    # uri 前缀必须 / 为开头
+    if uri_prefix.startswith('/') is False:
+      raise ValueError("StaticRouter uri_prefix 必须以'/'为开头")
     self.uri_prefix = uri_prefix
+
+    # 最大缓存时间单位s 如果值为None 表示不缓存
     self.max_age = max_age
 
+
   # 匹配路由
-  def match_path(self,req) -> Endpoint :
+  def match_path(self,req) -> BaseEndpoint | None :
     uri = req.path
     if req.method != "GET": return
     elif uri.startswith(self.uri_prefix):

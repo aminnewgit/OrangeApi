@@ -8,6 +8,7 @@ from ..utils.file import async_write_once,\
   async_open_write_not_close,async_write,async_close
 from ..websocket import WebSocketClient
 
+# todo 这里要优化 __slots__
 
 class Request(object):
   def __init__(self,method,path,query_str,url,
@@ -39,6 +40,8 @@ class Request(object):
     # response 发送标志及回调函数
     self.response_over = False
     self.on_response_over = False
+
+    self.session = None
 
   def send(self,data):
     self.transport.write(data)
@@ -84,10 +87,9 @@ class Request(object):
         j = json.loads(self.body.decode("utf-8"))
         self.json = j
         return j
-      except Exception as e:
-
-        log_error('json dumps error',self,e)
-        return None
+      except BaseException :
+        # log_error('json dumps error',self,e)
+        return {}
     else:
       return self.json
 

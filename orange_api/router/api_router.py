@@ -1,4 +1,6 @@
 from typing import Callable
+
+from .params_getter import ParamsGetter
 from ..http.request import Request
 from ..http.url import formate_url_path
 
@@ -9,7 +11,7 @@ from ..http.url import formate_url_path
 # auth_filter 鉴权过滤器 用于登陆和权限验证, 并想req 对象中加载session 数据
 # 优先级顺序(从高到低): 单体api过滤器->api模块过滤器->路由过滤器
 # 定义了优先级高的过滤器会覆盖优先级低的过滤器
-#
+
 
 class ApiEndpoint:
   __slots__ = (
@@ -27,7 +29,9 @@ class ApiEndpoint:
 
     "api_module",
     "api_router",
-    "filter_list"
+    "filter_list",
+
+    "params_getter",
   )
 
   def __init__(self,method,path,api_func,api_module):
@@ -50,10 +54,7 @@ class ApiEndpoint:
 
     self.filter_list = []
 
-  async def execute_func (self, req: Request):
-    for filter_func in self.filter_list:
-      await filter_func(req,self)
-    return await self.api_func()
+    self.params_getter = ParamsGetter(self)
 
   def add_path_prefix(self,path_prefix):
     if path_prefix is None: return self.path
@@ -78,19 +79,32 @@ class ApiEndpoint:
     if auth_filter is not None:
       self.auth_filter = auth_filter
       self.filter_list.append(auth_filter)
+    self.params_getter.init(self.api_func)
+
     # 给filter增加描述, 文档生成filter路径
 
   def get_doc_dict(self):
-    return {
+    data = {
       "title":self.doc[0],
       "desc": self.doc[1],
       "name": self.name,
       "method": self.method,
       'path': self.path,
-      'need_login': self.auth_filter is not None,
-      'permission': self.permission
+      'needLogin': self.auth_filter is not None,
+      'permission': self.permission,
+      'query': self.params_getter.query_params_list,
+      "body": self.params_getter.body_params_list,
+      "body_content_type": self.params_getter.body_type,
+      "response_content_type": self.params_getter.response_content_type,
+      "return_data_type": self.params_getter.return_type,
     }
+    return data
 
+  async def execute_func (self, req: Request):
+    for filter_func in self.filter_list:
+      await filter_func(req,self)
+    params_dict = await self.params_getter.get_params_dict(req)
+    return await self.api_func(**params_dict)
 
 # 根路径模块 path是'' 如果由前缀 就是 '/prefix'
 # 正常 path 前后不加 '/'

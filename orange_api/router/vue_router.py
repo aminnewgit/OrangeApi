@@ -1,4 +1,3 @@
-from orange_api.router.base import BaseEndpoint
 from ..http.response import get_file_resp_async
 
 
@@ -7,7 +6,7 @@ class StaticEndpoint:
   __slots__ = ("execute_func",)
 
   def __init__(self, file_path, max_age):
-    async def send_file():
+    async def send_file(req):
       return await get_file_resp_async(file_path,max_age)
     self.execute_func = send_file
 
@@ -41,7 +40,7 @@ class VueRouter:
     self.html_endpoint = StaticEndpoint(vue_html_path,None)
 
   # 匹配路由
-  def match_path(self,req) -> BaseEndpoint | None :
+  def match_path(self,req) -> StaticEndpoint | None :
     uri = req.path
     if req.method != "GET": return
     elif uri.startswith(self.vue_public_path):

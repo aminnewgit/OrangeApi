@@ -1,4 +1,3 @@
-from .base import BaseEndpoint
 from ..http.response import get_file_resp_async
 
 
@@ -6,11 +5,11 @@ class StaticEndpoint:
   __slots__ = ("execute_func",)
 
   def __init__(self, file_path, max_age):
-    async def send_file():
+    async def send_file(req):
       return await get_file_resp_async(file_path,max_age)
     self.execute_func = send_file
 
-# todo 不带/  自动去除/
+
 class StaticRouter:
 
   __slots__ = ("url_map","routes",'file_root_path','uri_prefix','max_age')
@@ -34,7 +33,7 @@ class StaticRouter:
 
 
   # 匹配路由
-  def match_path(self,req) -> BaseEndpoint | None :
+  def match_path(self,req) -> StaticEndpoint | None :
     uri = req.path
     if req.method != "GET": return
     elif uri.startswith(self.uri_prefix):

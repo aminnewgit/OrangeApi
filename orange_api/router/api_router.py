@@ -47,7 +47,7 @@ class ApiEndpoint:
 
     self.auth_filter = None
     self.auth_ignore = None
-    self.permission = None
+    self.permission: tuple | None = None
 
     self.api_module: ApiModule = api_module
     self.api_router: ApiRouter | None = None
@@ -69,17 +69,20 @@ class ApiEndpoint:
     self.permission = annotation_dict.get('permission')
     self.auth_ignore = annotation_dict.get("auth_ignore")
 
-    # 获取健全过滤器
-    if self.auth_ignore is True: return
-    auth_filter = annotation_dict.get('auth_filter')
-    if auth_filter is None:
-      auth_filter = self.api_module.__auth_filter__
-    if auth_filter is None:
-      auth_filter = self.api_router.__auth_filter__
-    if auth_filter is not None:
-      self.auth_filter = auth_filter
-      self.filter_list.append(auth_filter)
     self.params_getter.init(self.api_func)
+
+    # 获取健全过滤器
+    if self.auth_ignore is not True:
+      auth_filter = annotation_dict.get('auth_filter')
+      if auth_filter is None:
+        auth_filter = self.api_module.__auth_filter__
+      if auth_filter is None:
+        auth_filter = self.api_router.__auth_filter__
+      if auth_filter is not None:
+        self.auth_filter = auth_filter
+        self.filter_list.append(auth_filter)
+
+
 
     # 给filter增加描述, 文档生成filter路径
 
@@ -158,28 +161,32 @@ class ApiModule(object):
     return decorator
 
   # ===== 鉴权过滤器注册 =====
-  def reg_module_auth_filter(self,f):
+  def add_module_auth_filter(self,f):
     """注册api模块鉴权过滤器"""
     self.__auth_filter__ = f
     return f
 
-  def reg_api_auth_filter(self,f):
+  def add_api_auth_filter(self,auth_filter):
     """注册单个api鉴权过滤器"""
-    self._set_annotation(f, 'auth_filter', f)
-    return f
+    def decorator(f):
+      self._set_annotation(f, 'auth_filter', auth_filter)
+      return f
+    return decorator()
 
   # =====鉴权配置 =====
-  def permission(self,permission):
+  def permission(self,permission:str):
     """注册权限"""
     def decorator(f):
-      self._set_annotation(f, 'permission', permission)
+      self._set_annotation(f, 'permission', tuple(permission.split('.')))
       return f
     return decorator
 
-  def ignore_auth(self, f):
+  def ignore_auth(self):
     """忽略鉴权"""
-    self._set_annotation(f, 'auth_ignore', True)
-    return f
+    def decorator(f):
+      self._set_annotation(f, 'auth_ignore', True)
+      return f
+    return decorator
 
   # ===== 文档生成 =====
   def __get_api_doc_list__(self):
@@ -232,10 +239,11 @@ class ApiRouter:
     endpoint = method_dict.get(req.path)
     return endpoint
 
-  def reg_auth_filter(self, f):
+  def add_auth_filter(self, f):
     """注册router鉴权过滤器"""
     self.__auth_filter__ = f
     return f
+
 
   # 创建文档api
   def get_doc_data(self):

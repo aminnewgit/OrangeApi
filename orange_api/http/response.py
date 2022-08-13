@@ -49,7 +49,7 @@ http_status = {
 }
 
 class Response:
-  def __init__(self,body: bytes, headers=None, status_code = 200):
+  def __init__(self,body: bytes|None, headers=None, status_code = 200):
     if headers is None: headers = []
     self.status_code = status_code
     self.headers = headers

@@ -1,21 +1,22 @@
 
 from orange_kit import json_dumps
-from orange_kit.model.enum import get_enum_dict
+from orange_kit.model.base_enum import get_enum_dict
 from orange_kit.model.vo import get_vo_base_dict
 from .api_router import ApiRouter
 from ..http.response import Response
 
 class ApiDataEndpoint:
-  __slots__ = ("doc_data_resp","api_data")
+  __slots__ = ("doc_data_resp","api_data", "body")
 
   def __init__(self, api_data):
     self.api_data = api_data
     self.doc_data_resp = None
+    self.body = None
 
   async def execute_func(self,req):
-    if self.doc_data_resp is None:
+    if self.body is None:
       enum_dict = get_enum_dict()
-      enum_dict = {k: v.get_define_tuple() for k, v in enum_dict.items()}
+      enum_dict = {k: v.__get_define_tuple__() for k, v in enum_dict.items()}
       vo_base_dict = get_vo_base_dict()
       vo_base_dict = {k: v.get_field_define_list() for k, v in vo_base_dict.items()}
       resp_data = {
@@ -26,10 +27,11 @@ class ApiDataEndpoint:
           'voBaseDict': vo_base_dict,
         }
       }
-      body = json_dumps(resp_data).encode('utf-8')
-      headers = [('Content-Type', "application/json"), ]
-      self.doc_data_resp = Response(body, headers)
-    return self.doc_data_resp
+      self.body = json_dumps(resp_data).encode('utf-8')
+
+    headers = [('Content-Type', "application/json"), ]
+    resp = Response(self.body, headers)
+    return resp
 
 class ApiDocRouter:
 

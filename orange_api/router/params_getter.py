@@ -120,7 +120,6 @@ class ParamsGetter:
     else:
       self.return_type = get_type_define(return_type)
 
-
   def init(self,api_func):
     # 虽然用字典取值更快, 但是这里是初始化的时候执行的, 所以对速度要求不高,用比较简单的写法
     sig = signature(api_func)

@@ -211,7 +211,7 @@ class WebSocketClient:
     self.transport.write(frame)
 
   def send_json(self,data):
-    data = json.dumps(data, ensure_ascii=False)
+    data = json_dumps(data)
     self._send(0x01,data.encode('utf-8'))
 
   def send_text(self,text):

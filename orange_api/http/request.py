@@ -143,7 +143,7 @@ class RequestParser:
     r = r[0].decode('utf-8').split('\r\n', 1)
     rl = r[0].split()  # request line
     if len(rl) != 3: raise AssertionError('bad request line')
-    elif rl[2] != 'HTTP/1.1': raise AssertionError('not http 1.1')
+    # elif rl[2] != 'HTTP/1.1': raise AssertionError('not http 1.1')
     method = rl[0].upper()
     url = rl[1]
     if "%" in url:

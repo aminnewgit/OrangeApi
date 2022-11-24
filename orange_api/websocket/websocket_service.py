@@ -5,15 +5,18 @@ from .websocket_client import WebSocketClient
 
 
 class WsServiceBase:
-  def accept_client(self, req):
+
+  async def accept_client(self, req):
     ws_client: WebSocketClient
     resp, ws_client = req.upgrade_websocket()
     if ws_client is not None:
-      self.client_login(ws_client)
+      # 为什么是task, 因为先返回http的请求，确认ws已连接，在发送连接id
+      loop = asyncio.get_running_loop()
+      loop.create_task(self.client_login(ws_client))
     return resp
 
 
-  def client_login(self, ws_client):
+  async def client_login(self, ws_client):
     pass
 
 

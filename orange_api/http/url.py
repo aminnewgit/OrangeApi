@@ -2,7 +2,7 @@ def formate_url_path(path: str | None):
   if path is None: return None
   path = path.strip()
   if path == '': return None
-
+  elif path == '/': return ''
   if path.startswith("/") is False:
     path = "/" + path
 

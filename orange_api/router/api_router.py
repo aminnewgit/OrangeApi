@@ -12,7 +12,6 @@ from ..http.url import formate_url_path
 # 优先级顺序(从高到低): 单体api过滤器->api模块过滤器->路由过滤器
 # 定义了优先级高的过滤器会覆盖优先级低的过滤器
 
-
 class ApiEndpoint:
   __slots__ = (
     "method",
@@ -126,20 +125,23 @@ class ApiModule(object):
 
   # ===== 添加路由函数 =====
   def _add(self, method:str, path:str, func):
+    path = formate_url_path(path)
     endpoint = ApiEndpoint(method,path,func, self)
     endpoint.add_path_prefix(self.__url_prefix__)
     self.__endpoint_list__.append(endpoint)
 
   # 注册路由装饰器
-  def get(self, path:str):
+  def get(self, path:str = None):
     def decorator(f):
-      self._add('GET', path, f)
+      uri = path if path is not None else f.__name__
+      self._add('GET', uri, f)
       return f
     return decorator
 
-  def post(self, path:str):
+  def post(self, path:str = None):
     def decorator(f):
-      self._add("POST", path, f)
+      uri = path if path is not None else f.__name__
+      self._add("POST", uri, f)
       return f
     return decorator
 

@@ -77,7 +77,9 @@ def get_file_resp(file_path,max_age):
   # 检查文件是否存在
   if os.path.exists(file_path):
     # 获取扩展名
-    suffix = file_path.rsplit('.', 1)[1]
+    suffix = file_path.rsplit('.', 1)
+    if len(suffix) <2: return get_error_response(404)
+    suffix = suffix[1]
     # 二进制方式读取
     with open(file_path, 'rb') as f:
       body = f.read()

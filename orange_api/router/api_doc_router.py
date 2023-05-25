@@ -29,7 +29,13 @@ class ApiDataEndpoint:
       }
       self.body = json_dumps(resp_data).encode('utf-8')
 
-    headers = [('Content-Type', "application/json"), ]
+    headers = [
+      ('Content-Type', "application/json"),
+      ('connection', 'keep-alive'),
+      ('Access-Control-Allow-Origin', '*'),
+      ('Access-Control-Allow-Headers', 'X-Requested-With'),
+      ('Access-Control-Allow-Methods', 'GET,POST,OPTIONS'),
+    ]
     resp = Response(self.body, headers)
     return resp
 

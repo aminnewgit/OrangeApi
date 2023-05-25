@@ -2,6 +2,7 @@ import asyncio
 import traceback
 
 from orange_api.router.base import BaseEndpoint
+from orange_kit.log import OrangeLog
 
 from .http.error import CloseTransport
 from .http.response import get_error_response
@@ -13,7 +14,7 @@ from .server import run_server
 from .utils.log import orange_api_log
 
 default_max_body_length = 1024*1024*6  #6m
-
+log = OrangeLog('orange_api',enable_debug=False)
 
 class Orange(object):
   __slots__ = (
